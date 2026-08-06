@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Loan Admin · Tycoon Loans</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="admin">
+
+  <!-- Login -->
+  <div id="login" class="login-wrap">
+    <form class="panel login-card stack" id="loginForm">
+      <h1>Loan Admin</h1>
+      <p class="small muted" style="margin:0">Sign in to review applications.</p>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div id="loginError"></div>
+      <button class="btn primary block" type="submit">Sign in</button>
+    </form>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <h1>Loan Admin</h1>
+      <nav>
+        <button class="tab" data-view="queue" aria-selected="true">Queue <span id="queueCount" class="muted"></span></button>
+        <button class="tab" data-view="loans" aria-selected="false">Loans</button>
+        <button class="tab" data-view="history" aria-selected="false">History</button>
+        <button class="tab" data-view="settings" aria-selected="false">Settings</button>
+      </nav>
+      <button class="btn sm ghost" id="logoutBtn">Sign out</button>
+    </header>
+
+    <main class="shell stack">
+      <div id="charges"></div>
+
+      <!-- Queue -->
+      <section id="viewQueue" class="stack">
+        <div class="stats" id="stats"></div>
+        <div class="spread">
+          <h2>Waiting for a decision</h2>
+          <button class="btn sm ghost" id="refreshBtn">Refresh</button>
+        </div>
+        <div id="queueList" class="stack"></div>
+      </section>
+
+      <!-- Loans -->
+      <section id="viewLoans" class="stack hidden">
+        <div class="spread">
+          <h2>Loans</h2>
+          <select id="loanFilter" style="width:auto">
+            <option value="open">Open (awaiting payout, active, defaulted)</option>
+            <option value="active">Active</option>
+            <option value="awaiting_payout">Awaiting payout</option>
+            <option value="repaid">Repaid</option>
+            <option value="defaulted">Defaulted</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Player</th><th class="num">Principal</th><th class="num">Due</th>
+                <th class="num">Repaid</th><th class="num">Outstanding</th><th>Status</th><th>Deadline</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="loansBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section id="viewHistory" class="stack hidden">
+        <div class="spread">
+          <h2>Decided applications</h2>
+          <select id="historyFilter" style="width:auto">
+            <option value="all">All</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Withdrawn</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Player</th><th class="num">Amount</th><th>Term</th><th>Status</th><th>Submitted</th><th>Decided</th><th>Note</th></tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+
+        <h2 style="margin-top:8px">Audit log</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section id="viewSettings" class="stack hidden">
+        <form class="panel stack" id="settingsForm">
+          <h2>Lending rules</h2>
+          <div class="row">
+            <div class="field">
+              <label for="set_max_loan_amount">Max per loan</label>
+              <input id="set_max_loan_amount" name="max_loan_amount" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="set_min_loan_amount">Min per loan</label>
+              <input id="set_min_loan_amount" name="min_loan_amount" inputmode="numeric">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="set_interest_rate">Interest rate (0.03 = 3%)</label>
+              <input id="set_interest_rate" name="interest_rate" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label for="set_interest_model">Interest model</label>
+              <select id="set_interest_model" name="interest_model">
+                <option value="flat">Flat — charged once</option>
+                <option value="weekly">Weekly — charged per 7 days of term</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="set_allowed_terms">Terms offered (days, comma separated)</label>
+              <input id="set_allowed_terms" name="allowed_terms">
+            </div>
+            <div class="field">
+              <label for="set_max_active_loans">Max open loans per player</label>
+              <input id="set_max_active_loans" name="max_active_loans" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label for="set_max_pending_apps">Max pending applications</label>
+              <input id="set_max_pending_apps" name="max_pending_apps" inputmode="numeric">
+            </div>
+          </div>
+          <div class="field">
+            <label for="set_applications_open">Application queue</label>
+            <select id="set_applications_open" name="applications_open">
+              <option value="1">Open — players can apply</option>
+              <option value="0">Closed</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="set_closed_message">Message shown when closed</label>
+            <input id="set_closed_message" name="closed_message">
+          </div>
+          <div class="field">
+            <label for="set_payout_instructions">Payout instructions (shown in game)</label>
+            <textarea id="set_payout_instructions" name="payout_instructions"></textarea>
+          </div>
+          <div class="field">
+            <label for="set_repay_instructions">Repayment instructions (shown in game)</label>
+            <textarea id="set_repay_instructions" name="repay_instructions"></textarea>
+          </div>
+          <div><button class="btn primary" type="submit">Save settings</button></div>
+        </form>
+
+        <div class="panel stack">
+          <h2>Tycoon API connection</h2>
+          <p class="small muted" style="margin:0">
+            The proxy route runs over HTTPS. The direct route uses a raw TCP socket, because a deployed
+            Worker cannot fetch port 30120. Only one of them needs to work.
+          </p>
+          <div id="diagnostics"></div>
+          <div><button class="btn" id="diagBtn">Test connection</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Application review -->
+  <dialog id="reviewDialog">
+    <form method="dialog">
+      <div class="dlg-head spread"><h2 id="reviewTitle">Application</h2><button class="btn sm ghost" value="close">Close</button></div>
+    </form>
+    <div class="dlg-body stack" id="reviewBody"></div>
+    <div class="dlg-foot">
+      <button class="btn bad" id="rejectBtn">Reject</button>
+      <button class="btn good" id="approveBtn">Approve</button>
+    </div>
+  </dialog>
+
+  <!-- Loan detail -->
+  <dialog id="loanDialog">
+    <form method="dialog">
+      <div class="dlg-head spread"><h2 id="loanTitle">Loan</h2><button class="btn sm ghost" value="close">Close</button></div>
+    </form>
+    <div class="dlg-body stack" id="loanBody"></div>
+  </dialog>
+
+  <div class="toast-host" id="toasts"></div>
+  <script src="/admin.js"></script>
+</body>
+</html>

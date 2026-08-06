@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tycoon Loans</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="ingame">
+  <main class="app">
+    <header class="app-head">
+      <h1 id="brand">Tycoon Loans</h1>
+      <div class="who">
+        <div id="whoName" class="muted">Waiting for the game…</div>
+        <div id="whoBadge"></div>
+      </div>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="apply" aria-selected="true">Apply</button>
+      <button class="tab" role="tab" data-tab="mine" aria-selected="false">My loans <span id="mineCount" class="muted"></span></button>
+      <button class="tab" role="tab" data-tab="info" aria-selected="false">How it works</button>
+    </div>
+
+    <div class="app-body">
+      <!-- Connecting -->
+      <section id="viewConnecting" class="stack">
+        <div class="notice">Connecting to the game client…</div>
+        <p class="small muted">
+          This app reads your name and user ID straight from the game. If nothing happens,
+          press <kbd>F1</kbd>, reload the URL, and make sure you are connected to the server.
+        </p>
+        <div id="devLogin" class="hidden stack">
+          <div class="notice warn">Local development only — sign in by hand.</div>
+          <div class="row">
+            <div><label for="devId">User ID</label><input id="devId" inputmode="numeric" placeholder="123456"></div>
+            <div><label for="devName">Name</label><input id="devName" placeholder="Your name"></div>
+          </div>
+          <button class="btn primary" id="devGo">Sign in</button>
+        </div>
+      </section>
+
+      <!-- Apply -->
+      <section id="viewApply" class="stack hidden">
+        <div id="applyBlock"></div>
+
+        <form id="applyForm" class="stack">
+          <div class="field">
+            <label for="amount">How much do you want to borrow?</label>
+            <input id="amount" inputmode="numeric" autocomplete="off" placeholder="10 000 000">
+            <div class="chips" id="amountChips"></div>
+            <div class="small muted" id="amountHint" style="margin-top:6px"></div>
+          </div>
+
+          <div class="field">
+            <label for="term">Repayment term</label>
+            <select id="term"></select>
+          </div>
+
+          <div class="quote" id="quoteBox">
+            <div class="spread">
+              <span class="muted small">Total to repay</span>
+              <span id="quoteRate" class="pill info">3%</span>
+            </div>
+            <div class="total" id="quoteTotal">$0</div>
+            <dl class="kv" style="margin-top:10px">
+              <dt>Principal</dt><dd id="quotePrincipal">$0</dd>
+              <dt>Interest</dt><dd id="quoteInterest">$0</dd>
+              <dt>Due</dt><dd id="quoteDue">—</dd>
+            </dl>
+          </div>
+
+          <div class="field">
+            <label for="purpose">What is it for? <span class="muted">(helps you get approved)</span></label>
+            <textarea id="purpose" maxlength="500" placeholder="Buying a second hauler so I can run double loads…"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="collateral">Collateral or guarantee <span class="muted">(optional)</span></label>
+            <input id="collateral" maxlength="500" placeholder="e.g. my Phantom + trailer">
+          </div>
+
+          <div id="applyError"></div>
+          <button type="submit" class="btn primary block" id="submitBtn">Submit application</button>
+          <p class="small muted" style="margin:0">
+            Your wallet, bank, job and faction are attached to the application so the lender can assess it.
+          </p>
+        </form>
+      </section>
+
+      <!-- My loans -->
+      <section id="viewMine" class="stack hidden">
+        <div id="mineSummary"></div>
+        <div id="mineList"></div>
+      </section>
+
+      <!-- Info -->
+      <section id="viewInfo" class="stack hidden">
+        <div class="card stack">
+          <h2>The deal</h2>
+          <dl class="kv">
+            <dt>Interest rate</dt><dd id="infoRate">—</dd>
+            <dt>Maximum per loan</dt><dd id="infoMax">—</dd>
+            <dt>Minimum per loan</dt><dd id="infoMin">—</dd>
+            <dt>Terms available</dt><dd id="infoTerms">—</dd>
+          </dl>
+        </div>
+        <div class="card stack">
+          <h2>Getting paid</h2>
+          <p class="small" id="infoPayout">—</p>
+        </div>
+        <div class="card stack">
+          <h2>Paying it back</h2>
+          <p class="small" id="infoRepay">—</p>
+        </div>
+        <div class="card stack">
+          <h2>Rules</h2>
+          <ul class="small muted" style="margin:0; padding-left:18px">
+            <li>One application at a time, one open loan at a time.</li>
+            <li>Money moves in game, person to person. This app tracks the agreement.</li>
+            <li>Miss the due date and the loan is marked defaulted — you will not be lent to again.</li>
+            <li>The lender approves every loan by hand. Nothing is automatic.</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <footer class="app-foot">
+      <span><kbd>Esc</kbd> back to game · <kbd>F1</kbd> to return</span>
+      <span id="footStatus"></span>
+    </footer>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
