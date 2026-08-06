@@ -20,6 +20,9 @@
       <button class="tab" role="tab" data-tab="apply" aria-selected="true">Apply</button>
       <button class="tab" role="tab" data-tab="mine" aria-selected="false">My loans <span id="mineCount" class="muted"></span></button>
       <button class="tab" role="tab" data-tab="info" aria-selected="false">How it works</button>
+      <button class="tab hidden" role="tab" data-tab="staff" aria-selected="false" id="staffTab">
+        Staff <span id="staffCount" class="muted"></span>
+      </button>
     </div>
 
     <div class="app-body">
@@ -121,6 +124,33 @@
             <li>Miss the due date and the loan is marked defaulted — you will not be lent to again.</li>
             <li>The lender approves every loan by hand. Nothing is automatic.</li>
           </ul>
+        </div>
+      </section>
+      <!-- Staff: only rendered for the configured owner, and only usable with the PIN -->
+      <section id="viewStaff" class="stack hidden">
+        <form id="pinForm" class="card stack">
+          <h2>Staff sign-in</h2>
+          <p class="small muted" style="margin:0">Enter your PIN to review applications from in game.</p>
+          <div class="field" style="margin:0">
+            <label for="pin">PIN</label>
+            <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+          </div>
+          <div id="pinError"></div>
+          <button class="btn primary" type="submit">Unlock</button>
+        </form>
+
+        <div id="staffPanel" class="stack hidden">
+          <div class="spread">
+            <h2>Waiting for a decision</h2>
+            <div class="row" style="flex:0 0 auto">
+              <button class="btn sm ghost" id="staffRefresh">Refresh</button>
+              <button class="btn sm ghost" id="staffLock">Lock</button>
+            </div>
+          </div>
+          <div id="staffQueue" class="stack"></div>
+
+          <div class="spread"><h2>Open loans</h2></div>
+          <div id="staffLoans" class="stack"></div>
         </div>
       </section>
     </div>

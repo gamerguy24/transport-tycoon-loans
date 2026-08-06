@@ -40,6 +40,12 @@
 
   // Secrets (set with `wrangler secret put <NAME>`, never put them in this file):
   //   TYCOON_API_KEY  - your private key from `/api private new`
-  //   ADMIN_PASSWORD  - password for the /admin panel
+  //   ADMIN_PASSWORD  - password for the /admin panel on the web
   //   SESSION_SECRET  - long random string used to sign session tokens
+  //   ADMIN_USER_ID   - your in-game user ID, for the in-game staff panel
+  //   ADMIN_PIN       - PIN that unlocks the in-game staff panel
+  //
+  // ADMIN_USER_ID and ADMIN_PIN are both kept as secrets rather than vars so
+  // neither half of the in-game gate is readable in this repo. Leave either one
+  // unset and the in-game staff panel does not exist at all.
 }

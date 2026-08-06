@@ -23,6 +23,7 @@ const ROUTES = [
   ['POST', '/api/applications/:id/cancel', player.cancelApplication],
 
   ['POST', '/api/admin/login', admin.login],
+  ['POST', '/api/admin/ingame-login', admin.ingameLogin],
   ['POST', '/api/admin/logout', admin.logout],
   ['GET', '/api/admin/session', admin.session],
   ['GET', '/api/admin/overview', admin.overview],

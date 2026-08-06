@@ -125,6 +125,13 @@ export async function getMe(request, env) {
       pendingApps.length < settings.maxPendingApps &&
       openLoans.length < settings.maxActiveLoans,
     totalOutstanding: openLoans.reduce((sum, l) => sum + l.outstanding, 0),
+
+    // Whether to offer the staff tab at all. Decided here so the owner's user_id
+    // is never sent to anybody else's client. Still needs the PIN to be useful.
+    staff:
+      !!env.ADMIN_USER_ID &&
+      !!env.ADMIN_PIN &&
+      Number(session.user_id) === Number(env.ADMIN_USER_ID),
   });
 }
 

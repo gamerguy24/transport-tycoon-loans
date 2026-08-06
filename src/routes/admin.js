@@ -15,6 +15,7 @@ import {
   clearAdminCookie,
   issueAdminToken,
   requireAdmin,
+  requirePlayer,
   timingSafeEqual,
 } from '../lib/auth.js';
 import {
@@ -54,6 +55,54 @@ export async function login(request, env) {
   const token = await issueAdminToken(env.SESSION_SECRET);
   const secure = new URL(request.url).protocol === 'https:';
   return json({ ok: true }, 200, { 'set-cookie': adminCookie(token, secure) });
+}
+
+/**
+ * Staff sign-in from inside the game. Requires all four of:
+ *
+ *   1. a valid player session,
+ *   2. that session's user_id matching ADMIN_USER_ID,
+ *   3. that session having been confirmed online against the server player list,
+ *   4. the correct ADMIN_PIN.
+ *
+ * The game hands the web app a user_id it cannot vouch for, so (2) alone would
+ * be forgeable by anyone who reads the public player list - (4) is the real
+ * lock and (3) means an attacker would have to impersonate someone who is
+ * online at that moment. If either secret is unset the panel does not exist.
+ */
+export async function ingameLogin(request, env) {
+  if (!env.ADMIN_USER_ID || !env.ADMIN_PIN) {
+    throw new ApiError(503, 'The in-game staff panel is not configured.');
+  }
+
+  const player = await requirePlayer(request, env);
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const attempts = await bumpLoginAttempts(env, `ingame:${ip}`);
+  if (attempts > LOGIN_MAX_ATTEMPTS) {
+    throw new ApiError(429, 'Too many attempts. Wait 15 minutes.');
+  }
+
+  const body = await readJson(request);
+
+  // Same generic message whichever check fails, so a wrong ID and a wrong PIN
+  // are indistinguishable to someone probing.
+  const denied = new ApiError(403, 'Incorrect PIN');
+  if (Number(player.user_id) !== Number(env.ADMIN_USER_ID)) {
+    await audit(env, `player:${player.user_id}`, 'admin.ingame_login_denied', null, `ip:${ip} wrong id`);
+    throw denied;
+  }
+  if (!player.verified) {
+    throw new ApiError(403, 'Could not confirm you are online. Reopen the app and try again.');
+  }
+  if (!timingSafeEqual(body.pin, env.ADMIN_PIN)) {
+    await audit(env, `player:${player.user_id}`, 'admin.ingame_login_denied', null, `ip:${ip} wrong pin`);
+    throw denied;
+  }
+
+  await clearLoginAttempts(env, `ingame:${ip}`);
+  await audit(env, ACTOR, 'admin.ingame_login', null, `user:${player.user_id}`);
+
+  return json({ token: await issueAdminToken(env.SESSION_SECRET) });
 }
 
 export async function logout(request, env) {

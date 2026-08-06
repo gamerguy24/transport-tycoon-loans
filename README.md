@@ -148,6 +148,46 @@ it over in game. Treat the badge as a prompt to check the name against who you a
 
 ---
 
+## Approving from inside the game
+
+There is a **Staff** tab in the in-game app that lets you clear the queue without alt-tabbing:
+approve (at the asked amount or a counter-offer), deny, mark a loan paid out, and record repayments.
+
+Turn it on with two secrets:
+
+```bash
+npx wrangler secret put ADMIN_USER_ID   # your in-game user ID
+npx wrangler secret put ADMIN_PIN       # a PIN only you know
+```
+
+**Leave either unset and the tab does not exist for anybody, including you.** That is the default.
+
+### Why a PIN and not just your user ID
+
+The game tells the web app what your `user_id` is, but nothing signs it — the app cannot prove the
+claim, and every user ID on the server is public in `/players.json`. Gating on the ID alone would
+mean anyone who looked yours up could approve their own loans.
+
+So unlocking the staff tab requires **all four** of:
+
+1. a valid player session,
+2. that session's user ID matching `ADMIN_USER_ID`,
+3. that ID being confirmed online against the live player list,
+4. the correct `ADMIN_PIN`.
+
+A wrong ID and a wrong PIN return the same message, so probing tells an attacker nothing about which
+half they got wrong. Failures are rate limited to 8 per IP per 15 minutes and every attempt — success
+or failure — is written to the audit log. The tab is only sent to your client at all: `/api/me`
+decides server-side, so nobody else's app ever learns your user ID.
+
+Because of check 3, the staff tab needs you to be online *and* the Tycoon API to be reachable. If the
+API is down, use the web panel at `/admin` — it has no such dependency.
+
+Buttons that move money need two taps to fire (the second confirms), because native `confirm()`
+dialogs are unreliable inside the game client and a stray click should not approve 100M.
+
+---
+
 ## Locking down the admin panel
 
 `/admin` is protected by `ADMIN_PASSWORD`, with a lockout after 8 failed attempts from an IP in 15

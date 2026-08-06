@@ -84,12 +84,24 @@ export async function requirePlayer(request, env) {
   return payload;
 }
 
-/** Reads and validates the admin session cookie. */
+/**
+ * Reads and validates an admin session.
+ *
+ * The web panel sends an HttpOnly cookie. The in-game staff panel has no cookie
+ * jar worth relying on, so it sends the same signed token as a bearer instead.
+ * Player tokens carry kind "player" and can never satisfy this.
+ */
 export async function requireAdmin(request, env) {
-  const token = parseCookies(request)[ADMIN_COOKIE];
-  const payload = token ? await verifyToken(env.SESSION_SECRET, token) : null;
-  if (!payload || payload.kind !== 'admin') throw unauthorized('Sign in to the admin panel');
-  return payload;
+  const header = request.headers.get('authorization') || '';
+  const bearer = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const cookie = parseCookies(request)[ADMIN_COOKIE];
+
+  for (const token of [cookie, bearer]) {
+    if (!token) continue;
+    const payload = await verifyToken(env.SESSION_SECRET, token);
+    if (payload && payload.kind === 'admin') return payload;
+  }
+  throw unauthorized('Sign in to the admin panel');
 }
 
 export function adminCookie(token, secure) {

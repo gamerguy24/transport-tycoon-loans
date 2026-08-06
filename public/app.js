@@ -13,6 +13,7 @@ const parentPost = (msg) => window.parent.postMessage(msg, '*');
 const state = {
   config: null,
   token: localStorage.getItem('tt_loans_token'),
+  adminToken: localStorage.getItem('tt_loans_admin'),
   me: null,
   game: {},        // latest key/value cache from the game client
   signedIn: false,
@@ -158,6 +159,7 @@ function renderAll() {
   renderPlayerHeader();
   renderApply();
   renderMine();
+  renderStaffVisibility();
 }
 
 function renderPlayerHeader() {
@@ -315,6 +317,231 @@ function renderMine() {
     : '<div class="empty">No applications or loans yet.</div>';
 }
 
+/* ------------------------------------------------------------------ staff */
+
+/** The tab only exists for the configured owner - the server decides, not the client. */
+function renderStaffVisibility() {
+  $('staffTab').classList.toggle('hidden', !state.me?.staff);
+  if (!state.me?.staff) return;
+  $('pinForm').classList.toggle('hidden', !!state.adminToken);
+  $('staffPanel').classList.toggle('hidden', !state.adminToken);
+}
+
+async function adminApi(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body) headers['content-type'] = 'application/json';
+  if (state.adminToken) headers.authorization = `Bearer ${state.adminToken}`;
+
+  const res = await fetch(path, {
+    ...options,
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    /* empty body */
+  }
+  if (res.status === 401) {
+    lockStaff();
+    throw new Error('Staff session expired. Enter your PIN again.');
+  }
+  if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`);
+  return data;
+}
+
+function lockStaff() {
+  state.adminToken = null;
+  localStorage.removeItem('tt_loans_admin');
+  renderStaffVisibility();
+}
+
+$('pinForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('pinError').innerHTML = '';
+  try {
+    const res = await api('/api/admin/ingame-login', { method: 'POST', body: { pin: $('pin').value } });
+    state.adminToken = res.token;
+    localStorage.setItem('tt_loans_admin', res.token);
+    $('pin').value = '';
+    renderStaffVisibility();
+    await loadStaff();
+    parentPost({ type: 'notification', text: 'Staff panel unlocked' });
+  } catch (err) {
+    $('pinError').innerHTML = notice('error', err.message);
+    parentPost({ type: 'sfx', sfx: 11 });
+  }
+});
+
+$('staffLock').addEventListener('click', () => {
+  lockStaff();
+  parentPost({ type: 'notification', text: 'Staff panel locked' });
+});
+$('staffRefresh').addEventListener('click', () => loadStaff());
+
+async function loadStaff() {
+  if (!state.adminToken) return;
+  try {
+    const [apps, loans] = await Promise.all([
+      adminApi('/api/admin/applications?status=pending&limit=50'),
+      adminApi('/api/admin/loans?status=open&limit=50'),
+    ]);
+    renderStaffQueue(apps.applications);
+    renderStaffLoans(loans.loans);
+    $('staffCount').textContent = apps.applications.length ? `(${apps.applications.length})` : '';
+  } catch (err) {
+    $('staffQueue').innerHTML = notice('error', err.message);
+  }
+}
+
+function renderStaffQueue(apps) {
+  if (!apps.length) {
+    $('staffQueue').innerHTML = '<div class="empty">Nothing waiting.</div>';
+    return;
+  }
+  $('staffQueue').innerHTML = apps.map((app) => {
+    const snap = app.snapshot || {};
+    const funds = (snap.wallet ?? 0) + (snap.bank ?? 0);
+    return `
+      <div class="card stack" data-app="${app.id}">
+        <div class="spread">
+          <div>
+            <b>${escapeHtml(app.player_name)}</b>
+            <span class="muted small">#${escapeHtml(app.user_id)}</span>
+          </div>
+          <b class="mono" style="font-size:1.15rem">${money(app.amount)}</b>
+        </div>
+        <div class="row small" style="gap:6px">
+          <span class="pill ${app.identity_verified ? 'active' : 'pending'}">
+            ${app.identity_verified ? 'verified' : 'unverified'}</span>
+          ${snap.job_title ? `<span class="pill info">${escapeHtml(snap.job_title)}</span>` : ''}
+          ${snap.faction_name ? `<span class="pill info">${escapeHtml(snap.faction_name)}</span>` : ''}
+        </div>
+        <dl class="kv">
+          <dt>Repays</dt><dd>${money(app.total_repayable)} in ${app.term_days}d</dd>
+          <dt>Has on hand</dt><dd>${snap.wallet === undefined && snap.bank === undefined ? '—' : money(funds)}</dd>
+          ${app.purpose ? `<dt>For</dt><dd style="text-align:left">${escapeHtml(app.purpose)}</dd>` : ''}
+        </dl>
+        <div class="field" style="margin:0">
+          <label for="amt${app.id}">Amount to lend</label>
+          <input id="amt${app.id}" class="staff-amount" inputmode="numeric"
+                 value="${app.amount.toLocaleString('en-US').replace(/,/g, ' ')}">
+        </div>
+        <div class="row">
+          <button class="btn good" data-act="approve" data-id="${app.id}">Approve</button>
+          <button class="btn bad" data-act="reject" data-id="${app.id}">Deny</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderStaffLoans(loans) {
+  if (!loans.length) {
+    $('staffLoans').innerHTML = '<div class="empty">No open loans.</div>';
+    return;
+  }
+  $('staffLoans').innerHTML = loans.map((l) => `
+    <div class="card stack">
+      <div class="spread">
+        <div><b>${escapeHtml(l.player_name)}</b> <span class="muted small">#${l.user_id}</span></div>
+        <span class="pill ${l.overdue ? 'overdue' : l.status}">
+          ${l.overdue ? 'overdue' : l.status.replace(/_/g, ' ')}</span>
+      </div>
+      <dl class="kv">
+        <dt>Owes</dt><dd><b>${money(l.outstanding)}</b> of ${money(l.total_due)}</dd>
+        <dt>Due</dt><dd>${l.due_at ? relative(l.due_at) : 'not paid out yet'}</dd>
+      </dl>
+      ${l.status === 'awaiting_payout'
+        ? `<button class="btn good" data-act="payout" data-id="${l.id}">Mark paid out</button>`
+        : `<div class="row">
+             <input id="rp${l.id}" class="staff-amount" inputmode="numeric" placeholder="Repayment amount">
+             <button class="btn" data-act="repay" data-id="${l.id}" style="flex:0 0 auto">Record</button>
+             <button class="btn ghost sm" data-act="settle" data-id="${l.id}"
+                     data-amount="${l.outstanding}" style="flex:0 0 auto">Settle all</button>
+           </div>`}
+    </div>`).join('');
+}
+
+/**
+ * Two-tap confirmation. Native confirm() dialogs are unreliable inside the game
+ * client, and these buttons move real money - one stray click should not.
+ */
+function armed(btn, label) {
+  if (btn.dataset.armed === '1') return true;
+  const original = btn.textContent;
+  btn.dataset.armed = '1';
+  btn.textContent = label;
+  setTimeout(() => {
+    if (!btn.isConnected) return;
+    btn.dataset.armed = '0';
+    btn.textContent = original;
+  }, 4000);
+  return false;
+}
+
+async function staffAction(e) {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const { act, id } = btn.dataset;
+
+  const labels = {
+    approve: 'Tap to confirm approve',
+    reject: 'Tap to confirm deny',
+    payout: 'Tap to confirm payout',
+    repay: 'Tap to confirm',
+    settle: 'Tap to settle in full',
+  };
+  if (!armed(btn, labels[act])) return;
+
+  btn.disabled = true;
+  try {
+    if (act === 'approve') {
+      const amount = parseAmount($(`amt${id}`).value);
+      const res = await adminApi(`/api/admin/applications/${id}/approve`, {
+        method: 'POST',
+        body: { amount },
+      });
+      parentPost({ type: 'notification', text: `Approved ${money(res.loan.principal)} for ${res.loan.player_name}` });
+      parentPost({ type: 'sfx', sfx: 6 });
+    } else if (act === 'reject') {
+      await adminApi(`/api/admin/applications/${id}/reject`, { method: 'POST', body: {} });
+      parentPost({ type: 'notification', text: 'Application denied' });
+    } else if (act === 'payout') {
+      const res = await adminApi(`/api/admin/loans/${id}/payout`, { method: 'POST' });
+      parentPost({ type: 'notification', text: `Loan active, due in ${res.loan.term_days} days` });
+      parentPost({ type: 'sfx', sfx: 5 });
+    } else if (act === 'repay' || act === 'settle') {
+      const amount = act === 'settle' ? Number(btn.dataset.amount) : parseAmount($(`rp${id}`).value);
+      if (!amount) throw new Error('Enter an amount first');
+      const res = await adminApi(`/api/admin/loans/${id}/repayment`, { method: 'POST', body: { amount } });
+      parentPost({
+        type: 'notification',
+        text: res.settled ? 'Loan settled in full' : `Recorded ${money(amount)}`,
+      });
+      parentPost({ type: 'sfx', sfx: res.settled ? 16 : 5 });
+    }
+    await loadStaff();
+  } catch (err) {
+    parentPost({ type: 'notification', text: err.message });
+    parentPost({ type: 'sfx', sfx: 11 });
+    btn.disabled = false;
+    btn.dataset.armed = '0';
+  }
+}
+
+$('staffQueue').addEventListener('click', staffAction);
+$('staffLoans').addEventListener('click', staffAction);
+
+// Space-group the numbers as they are typed, same as the apply form.
+for (const host of ['staffQueue', 'staffLoans']) {
+  $(host).addEventListener('input', (e) => {
+    if (!e.target.classList.contains('staff-amount')) return;
+    const digits = parseAmount(e.target.value);
+    e.target.value = digits ? digits.toLocaleString('en-US').replace(/,/g, ' ') : '';
+  });
+}
+
 /* ----------------------------------------------------------------- events */
 
 document.querySelectorAll('.tab').forEach((tab) => {
@@ -327,9 +554,13 @@ function showTab(name) {
     t.setAttribute('aria-selected', String(t.dataset.tab === name));
   });
   $('viewConnecting').classList.toggle('hidden', state.signedIn);
-  for (const [view, key] of [['viewApply', 'apply'], ['viewMine', 'mine'], ['viewInfo', 'info']]) {
+  for (const [view, key] of [
+    ['viewApply', 'apply'], ['viewMine', 'mine'],
+    ['viewInfo', 'info'], ['viewStaff', 'staff'],
+  ]) {
     $(view).classList.toggle('hidden', !state.signedIn || key !== name);
   }
+  if (name === 'staff' && state.adminToken) loadStaff();
 }
 
 $('amount').addEventListener('input', (e) => {
