@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tt-loans",
+  "main": "src/index.js",
+  "compatibility_date": "2025-11-01",
+
+  // Static files in ./public are served by Cloudflare's asset host (free, no Worker
+  // invocation). Anything under /api/* always hits the Worker first.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tt-loans",
+      // Replace with the id printed by: npm run db:create
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+    }
+  ],
+
+  "vars": {
+    // Which Tycoon server this loan service is for. See https://cdn.tycoon.community/servers.json
+    // main = Main Server (2epova), beta = Beta Server (njyvop), lite = [LITE] (dgpvx3)
+    "TYCOON_SERVER": "main",
+
+    // Display name shown in the in-game app header.
+    "BRAND_NAME": "Tycoon Loans",
+
+    // Set to "1" to let players apply even when the Tycoon API is unreachable.
+    // Their application is still created but flagged unverified for you to eyeball.
+    "ALLOW_UNVERIFIED_APPLICATIONS": "1"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+
+  // Secrets (set with `wrangler secret put <NAME>`, never put them in this file):
+  //   TYCOON_API_KEY  - your private key from `/api private new`
+  //   ADMIN_PASSWORD  - password for the /admin panel
+  //   SESSION_SECRET  - long random string used to sign session tokens
+}

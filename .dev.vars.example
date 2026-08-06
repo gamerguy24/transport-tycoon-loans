@@ -1,0 +1,13 @@
+# Copy to .dev.vars for local development (`npm run dev`).
+# .dev.vars is gitignored. These values are NOT used in production - in production
+# set them with `wrangler secret put <NAME>`.
+
+# Private Tycoon API key. Generate in game with: /api private new
+TYCOON_API_KEY="your-private-key-here"
+
+# Password for the admin panel at /admin
+ADMIN_PASSWORD="change-me"
+
+# Long random string used to sign session tokens.
+# Generate one with: node -e "console.log(crypto.randomUUID()+crypto.randomUUID())"
+SESSION_SECRET="change-me-to-something-long-and-random"
