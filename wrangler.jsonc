@@ -17,8 +17,7 @@
     {
       "binding": "DB",
       "database_name": "tt-loans",
-      // Replace with the id printed by: npm run db:create
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+      "database_id": "7542260d-a575-430b-9d70-c70731de27cd"
     }
   ],
 

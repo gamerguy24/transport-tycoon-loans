@@ -77,8 +77,16 @@ does need replacing, `/api private new` in game and re-run the first command —
 
 ### 4. Check the connection
 
-Open `https://your-worker-url/admin`, sign in, go to **Settings → Test connection**. You want at
-least one of the two routes to report `ok`. See *Reaching the game API* below if both fail.
+Open `https://your-worker-url/api/health` first. It reports whether D1 is bound, whether the tables
+exist and whether each secret is set, and names the command to fix anything that is missing. It never
+echoes a secret value — only `set` or `MISSING`.
+
+If it says `ok: true`, open `/admin`, sign in, and go to **Settings → Test connection**. You want at
+least one of the two API routes to report `ok`. See *Reaching the game API* below if both fail.
+
+> **Deploying from the Cloudflare dashboard?** Uploading the project there creates the D1 database
+> for you, but it does **not** run `schema.sql`. You still have to run `npm run db:init` once, or
+> every request fails. `/api/health` will tell you if this is what happened.
 
 ### 5. Give players the URL
 

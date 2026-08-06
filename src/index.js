@@ -14,6 +14,7 @@ import * as admin from './routes/admin.js';
 
 /** [method, path pattern, handler]. `:name` captures a path segment. */
 const ROUTES = [
+  ['GET', '/api/health', health],
   ['GET', '/api/config', player.getPublicConfig],
   ['POST', '/api/session', player.createSession],
   ['GET', '/api/me', player.getMe],
@@ -41,6 +42,40 @@ const ROUTES = [
   ['PUT', '/api/admin/settings', admin.updateAdminSettings],
   ['GET', '/api/admin/audit', admin.auditLog],
 ];
+
+/**
+ * Deployment check. Reports what is wired up without revealing any value -
+ * secrets are reported as present or missing, never echoed.
+ */
+async function health(request, env) {
+  const checks = { database: 'unknown', tables: [], missing_tables: [], secrets: {} };
+  const REQUIRED = ['settings', 'players', 'applications', 'loans', 'repayments', 'audit_log', 'api_cache'];
+
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+    ).all();
+    checks.database = 'connected';
+    checks.tables = (results ?? []).map((r) => r.name);
+    checks.missing_tables = REQUIRED.filter((t) => !checks.tables.includes(t));
+  } catch (err) {
+    checks.database = 'unreachable';
+    checks.database_error = String(err?.message || err);
+  }
+
+  for (const name of ['TYCOON_API_KEY', 'ADMIN_PASSWORD', 'SESSION_SECRET']) {
+    checks.secrets[name] = env[name] ? 'set' : 'MISSING';
+  }
+
+  const problems = [];
+  if (checks.database !== 'connected') problems.push('D1 binding is not working - check database_id in wrangler.jsonc');
+  if (checks.missing_tables.length) problems.push('Schema not applied - run: npm run db:init');
+  for (const [name, status] of Object.entries(checks.secrets)) {
+    if (status === 'MISSING') problems.push(`Secret ${name} is not set - run: wrangler secret put ${name}`);
+  }
+
+  return json({ ok: problems.length === 0, problems, ...checks }, problems.length ? 503 : 200);
+}
 
 const COMPILED = ROUTES.map(([method, pattern, handler]) => ({
   method,
@@ -90,6 +125,19 @@ export default {
           return json({ error: err.message, ...err.extra }, err.status);
         }
         console.error('Unhandled error', url.pathname, err?.stack || err);
+
+        // The one failure that looks identical from every endpoint: the D1
+        // database exists but schema.sql was never applied. Say so plainly
+        // rather than making someone read the logs to find out.
+        if (/no such table|D1_ERROR|no such column/i.test(String(err?.message))) {
+          return json(
+            {
+              error: 'The database is not set up yet. Run: npm run db:init',
+              hint: 'See /api/health for details.',
+            },
+            503
+          );
+        }
         return json({ error: 'Something broke on our end. Try again.' }, 500);
       }
     }
