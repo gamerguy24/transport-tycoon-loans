@@ -199,8 +199,12 @@ body.ingame {
   border-radius: 10px;
   cursor: pointer;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
 .reopen:hover { filter: brightness(1.08); }
+.reopen.dragging { cursor: grabbing; }
 
 .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .tab {

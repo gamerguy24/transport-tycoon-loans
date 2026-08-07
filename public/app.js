@@ -124,76 +124,91 @@ function revealApp() {
 }
 
 $('hideBtn').addEventListener('click', hideApp);
-$('reopen').addEventListener('click', revealApp);
 
 /**
- * Drag the panel around by its header. The position is pinned as `fixed` on the
- * first grab, clamped so the header can never leave the screen, and remembered
- * so it stays put across a hide/show and across reloads.
+ * Makes `target` draggable by `handle`. Position is pinned as `fixed` once the
+ * drag passes a small threshold (so a plain click still counts as a click),
+ * clamped so the handle can never leave the screen, and saved so it survives a
+ * hide/show and a reload.
+ *
+ * @param {string} key          localStorage key for the remembered position
+ * @param {Function} [onTap]    called when the pointer is released without dragging
+ * @param {string} [ignore]     selector; grabs that start on a match don't drag
  */
-(function makeDraggable() {
-  const app = document.querySelector('.app');
-  const handle = document.querySelector('.app-head');
-  const KEY = 'tt_loans_pos';
-  let dragging = false;
+function enableDrag(target, handle, key, { onTap, ignore } = {}) {
+  const THRESHOLD = 4; // px of movement before it counts as a drag, not a tap
+  let active = false;
+  let moved = false;
   let startX = 0;
   let startY = 0;
   let baseLeft = 0;
   let baseTop = 0;
 
   function place(left, top) {
-    const maxLeft = window.innerWidth - app.offsetWidth - 6;
-    const maxTop = window.innerHeight - app.offsetHeight - 6;
-    app.style.position = 'fixed';
-    app.style.margin = '0';
-    app.style.left = `${Math.max(6, Math.min(left, Math.max(6, maxLeft)))}px`;
-    app.style.top = `${Math.max(6, Math.min(top, Math.max(6, maxTop)))}px`;
+    const maxLeft = Math.max(6, window.innerWidth - target.offsetWidth - 6);
+    const maxTop = Math.max(6, window.innerHeight - target.offsetHeight - 6);
+    target.style.position = 'fixed';
+    target.style.margin = '0';
+    target.style.left = `${Math.max(6, Math.min(left, maxLeft))}px`;
+    target.style.top = `${Math.max(6, Math.min(top, maxTop))}px`;
   }
 
   handle.addEventListener('pointerdown', (e) => {
-    // Don't start a drag from the Hide button or any other control.
-    if (e.target.closest('button, input, a, select, textarea')) return;
-    dragging = true;
-    handle.classList.add('dragging');
-    const rect = app.getBoundingClientRect();
+    if (ignore && e.target.closest(ignore)) return;
+    active = true;
+    moved = false;
+    const rect = target.getBoundingClientRect();
     baseLeft = rect.left;
     baseTop = rect.top;
     startX = e.clientX;
     startY = e.clientY;
-    place(baseLeft, baseTop); // pin where it currently sits, no jump
     handle.setPointerCapture?.(e.pointerId);
     e.preventDefault();
   });
 
   handle.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
+    if (!active) return;
+    if (!moved && Math.hypot(e.clientX - startX, e.clientY - startY) < THRESHOLD) return;
+    moved = true;
+    handle.classList.add('dragging');
     place(baseLeft + (e.clientX - startX), baseTop + (e.clientY - startY));
   });
 
-  function endDrag() {
-    if (!dragging) return;
-    dragging = false;
+  function end() {
+    if (!active) return;
+    active = false;
     handle.classList.remove('dragging');
-    const rect = app.getBoundingClientRect();
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ left: rect.left, top: rect.top }));
-    } catch {
-      /* storage disabled - position just won't persist */
+    if (moved) {
+      const rect = target.getBoundingClientRect();
+      try {
+        localStorage.setItem(key, JSON.stringify({ left: rect.left, top: rect.top }));
+      } catch {
+        /* storage disabled - position just won't persist */
+      }
+    } else if (onTap) {
+      onTap();
     }
   }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
 
-  // Restore a saved position on load.
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
+    const saved = JSON.parse(localStorage.getItem(key));
     if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
       requestAnimationFrame(() => place(saved.left, saved.top));
     }
   } catch {
     /* ignore malformed value */
   }
-})();
+}
+
+// The whole panel drags by its header (clicks on controls are left alone).
+enableDrag(document.querySelector('.app'), document.querySelector('.app-head'), 'tt_loans_pos', {
+  ignore: 'button, input, a, select, textarea',
+});
+
+// The Show Loans pill drags too; a plain click still reopens the app.
+enableDrag($('reopen'), $('reopen'), 'tt_loans_reopen_pos', { onTap: revealApp });
 
 /* ------------------------------------------------------------------ sign in */
 
