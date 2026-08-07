@@ -92,9 +92,11 @@ window.addEventListener('message', (event) => {
 
   Object.assign(state.game, payload.data);
 
-  // Cross / Circle: submit or step back, so the app is usable from a controller.
+  // Controller binds: Cross submits, Circle hands control back but leaves the
+  // app on screen, Triangle hides it entirely.
   if ('trigger_cross' in payload.data) $('applyForm')?.requestSubmit();
   if ('trigger_circle' in payload.data) parentPost({ type: 'pin' });
+  if ('trigger_triangle' in payload.data) hideApp();
 
   if (!state.signedIn && !state.signingIn && state.game.user_id) signIn();
   if (state.signedIn) renderPlayerHeader();
@@ -103,9 +105,23 @@ window.addEventListener('message', (event) => {
 // Ask for the whole cache immediately - the client only pushes changed keys.
 parentPost({ type: 'getData' });
 
+/**
+ * `close` hides the app off screen; the player brings it back with F1. This is
+ * distinct from `pin`, which returns control to the game but leaves the app
+ * visible. "Hide" means fully out of the way, so it uses close.
+ */
+function hideApp() {
+  parentPost({ type: 'close' });
+}
+
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') parentPost({ type: 'pin' });
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    hideApp();
+  }
 });
+
+$('hideBtn').addEventListener('click', hideApp);
 
 /* ------------------------------------------------------------------ sign in */
 
