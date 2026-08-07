@@ -9,6 +9,7 @@
  */
 
 import { ApiError, json } from './lib/http.js';
+import { requireAdmin } from './lib/auth.js';
 import * as player from './routes/player.js';
 import * as admin from './routes/admin.js';
 
@@ -49,6 +50,14 @@ const ROUTES = [
  * secrets are reported as present or missing, never echoed.
  */
 async function health(request, env) {
+  // Public callers get only a liveness signal. The internal report - table
+  // names, which secrets are set, setup hints - is for the owner alone.
+  try {
+    await requireAdmin(request, env);
+  } catch {
+    return json({ ok: true });
+  }
+
   const checks = { database: 'unknown', tables: [], missing_tables: [], secrets: {} };
   const REQUIRED = ['settings', 'players', 'applications', 'loans', 'repayments', 'audit_log', 'api_cache'];
 
@@ -127,17 +136,11 @@ export default {
         }
         console.error('Unhandled error', url.pathname, err?.stack || err);
 
-        // The one failure that looks identical from every endpoint: the D1
-        // database exists but schema.sql was never applied. Say so plainly
-        // rather than making someone read the logs to find out.
+        // A schema-not-applied error looks the same from every endpoint. Return
+        // a bare 503 to the public; the cause and fix are in the logs and in the
+        // admin-only /api/health, not volunteered to callers.
         if (/no such table|D1_ERROR|no such column/i.test(String(err?.message))) {
-          return json(
-            {
-              error: 'The database is not set up yet. Run: npm run db:init',
-              hint: 'See /api/health for details.',
-            },
-            503
-          );
+          return json({ error: 'Service temporarily unavailable.' }, 503);
         }
         return json({ error: 'Something broke on our end. Try again.' }, 500);
       }

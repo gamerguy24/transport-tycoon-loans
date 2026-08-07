@@ -1,5 +1,7 @@
 node_modules/
 .wrangler/
+# Build output - generated from ./client by `npm run build`.
+/public/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

@@ -5,14 +5,16 @@
   "description": "Loan service for the Transport Tycoon FiveM server - in-game User Application + admin approval panel",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "build": "node build.mjs",
+    "dev": "node build.mjs && wrangler dev",
+    "deploy": "node build.mjs && wrangler deploy",
     "db:create": "wrangler d1 create tt-loans",
     "db:init": "wrangler d1 execute tt-loans --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute tt-loans --local --file=./schema.sql",
     "tail": "wrangler tail"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "wrangler": "^4.20.0"
   }
 }
