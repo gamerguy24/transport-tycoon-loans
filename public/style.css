@@ -182,6 +182,24 @@ body.ingame {
 .app-head .who { margin-left: auto; text-align: right; font-size: .85rem; }
 .app-head .hide-btn { flex: 0 0 auto; align-self: flex-start; }
 
+/* The reopen handle. Sits top-left, out of the way of the money HUD (top-right)
+   and minimap (bottom-left), and only appears while the app is hidden. */
+.reopen {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 100;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.reopen:hover { filter: brightness(1.08); }
+
 .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .tab {
   appearance: none; background: none; border: 0; border-bottom: 2px solid transparent;

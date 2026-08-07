@@ -159,10 +159,14 @@
     </div>
 
     <footer class="app-foot">
-      <span><kbd>Esc</kbd> hide · <kbd>F1</kbd> to return · <kbd>Circle</kbd> control back</span>
+      <span><kbd>Hide</kbd> tucks away just this app · <kbd>F1</kbd> returns to game</span>
       <span id="footStatus"></span>
     </footer>
   </main>
+
+  <!-- Shown only while the app is hidden, so there is always a way back without
+       touching the game's toolbar or any other loaded web app. -->
+  <button id="reopen" class="reopen hidden">💰 Show Loans</button>
 
   <script src="/app.js"></script>
 </body>

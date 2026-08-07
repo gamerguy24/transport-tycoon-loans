@@ -92,15 +92,10 @@ window.addEventListener('message', (event) => {
 
   Object.assign(state.game, payload.data);
 
-  // Controller binds: Cross submits, Circle hands control back but leaves the
-  // app on screen, Triangle hides just this app.
+  // Cross submits; Circle hands control back to the game (the game's own,
+  // system-wide pin). Triangle is left to the game.
   if ('trigger_cross' in payload.data) $('applyForm')?.requestSubmit();
   if ('trigger_circle' in payload.data) parentPost({ type: 'pin' });
-  if ('trigger_triangle' in payload.data) hideApp();
-
-  // The game reports focus back to us. Pressing F1 to return to the app makes
-  // `focused` true, which is our cue to un-hide.
-  if (state.appHidden && truthy(payload.data.focused)) revealApp();
 
   if (!state.signedIn && !state.signingIn && state.game.user_id) signIn();
   if (state.signedIn) renderPlayerHeader();
@@ -109,35 +104,27 @@ window.addEventListener('message', (event) => {
 // Ask for the whole cache immediately - the client only pushes changed keys.
 parentPost({ type: 'getData' });
 
-const truthy = (v) => v === true || v === 'true' || v === 1;
-
 /**
- * Hides ONLY this app, not the whole user-app overlay.
+ * Hides ONLY this app.
  *
- * The game's `close` command tears down the overlay, which takes everything
- * else with it. Instead we hide our own UI and send `pin`, which just hands
- * control back to the game. The app frame stays loaded but shows nothing, so
- * nothing but the loan app disappears. F1 refocuses us and we reveal again.
+ * The game's pin/close commands act on the whole user-app system - they take
+ * the toolbar and every other loaded web app with them. That is the game's
+ * built-in Hide button, and it is not what we want here. So we send nothing to
+ * the game at all: we just hide our own panel and show a small Show button in
+ * its place. The toolbar and any other apps are untouched.
  */
 function hideApp() {
-  state.appHidden = true;
   document.querySelector('.app').classList.add('hidden');
-  parentPost({ type: 'pin' });
+  $('reopen').classList.remove('hidden');
 }
 
 function revealApp() {
-  state.appHidden = false;
   document.querySelector('.app').classList.remove('hidden');
+  $('reopen').classList.add('hidden');
 }
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    hideApp();
-  }
-});
-
 $('hideBtn').addEventListener('click', hideApp);
+$('reopen').addEventListener('click', revealApp);
 
 /* ------------------------------------------------------------------ sign in */
 
