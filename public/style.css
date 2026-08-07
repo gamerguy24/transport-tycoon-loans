@@ -59,17 +59,26 @@ a { color: var(--info); }
 .btn.sm { padding: 5px 11px; font-size: .85rem; }
 .btn.block { width: 100%; }
 
+/* Fields sit a step lighter than the panel behind them. At 0.98 opacity with no
+   blur, the old #0e141d was almost the same value as the app background and the
+   inputs read as holes rather than fields. */
 input, select, textarea {
   width: 100%;
   font: inherit;
   color: var(--text);
-  background: #0e141d;
-  border: 1px solid var(--line);
+  background: #151d29;
+  border: 1px solid #313d50;
   border-radius: 9px;
   padding: 9px 12px;
 }
-input:focus, select, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-select { outline: none; }
+/* 5.15:1 against the field. The placeholders carry real instructions here, so
+   they have to clear 4.5:1 rather than sit at decorative grey. */
+input::placeholder, textarea::placeholder { color: #7f8fa6; }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
 textarea { resize: vertical; min-height: 62px; }
 label { display: block; font-size: .8rem; color: var(--muted); margin: 0 0 5px; font-weight: 600;
         letter-spacing: .03em; text-transform: uppercase; }
@@ -145,17 +154,21 @@ body.ingame {
   padding: 18px;
 }
 
+/* Nearly opaque, with no blur or shadow. backdrop-filter is expensive in the
+   game's embedded browser and tends to render as a flat grey slab, and a large
+   shadow over the game reads as a smear rather than depth. The extra opacity
+   makes up for the lost blur. */
 .app {
   width: min(760px, 100%);
   max-height: calc(100vh - 36px);
   display: flex;
   flex-direction: column;
-  background: rgba(11, 15, 22, 0.94);
+  background: rgba(11, 15, 22, 0.98);
   border: 1px solid var(--line);
   border-radius: 16px;
-  box-shadow: var(--shadow);
+  box-shadow: none;
   overflow: hidden;
-  backdrop-filter: blur(6px);
+  backdrop-filter: none;
 }
 
 .app-head {
