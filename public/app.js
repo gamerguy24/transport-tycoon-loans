@@ -93,10 +93,14 @@ window.addEventListener('message', (event) => {
   Object.assign(state.game, payload.data);
 
   // Controller binds: Cross submits, Circle hands control back but leaves the
-  // app on screen, Triangle hides it entirely.
+  // app on screen, Triangle hides just this app.
   if ('trigger_cross' in payload.data) $('applyForm')?.requestSubmit();
   if ('trigger_circle' in payload.data) parentPost({ type: 'pin' });
   if ('trigger_triangle' in payload.data) hideApp();
+
+  // The game reports focus back to us. Pressing F1 to return to the app makes
+  // `focused` true, which is our cue to un-hide.
+  if (state.appHidden && truthy(payload.data.focused)) revealApp();
 
   if (!state.signedIn && !state.signingIn && state.game.user_id) signIn();
   if (state.signedIn) renderPlayerHeader();
@@ -105,13 +109,25 @@ window.addEventListener('message', (event) => {
 // Ask for the whole cache immediately - the client only pushes changed keys.
 parentPost({ type: 'getData' });
 
+const truthy = (v) => v === true || v === 'true' || v === 1;
+
 /**
- * `close` hides the app off screen; the player brings it back with F1. This is
- * distinct from `pin`, which returns control to the game but leaves the app
- * visible. "Hide" means fully out of the way, so it uses close.
+ * Hides ONLY this app, not the whole user-app overlay.
+ *
+ * The game's `close` command tears down the overlay, which takes everything
+ * else with it. Instead we hide our own UI and send `pin`, which just hands
+ * control back to the game. The app frame stays loaded but shows nothing, so
+ * nothing but the loan app disappears. F1 refocuses us and we reveal again.
  */
 function hideApp() {
-  parentPost({ type: 'close' });
+  state.appHidden = true;
+  document.querySelector('.app').classList.add('hidden');
+  parentPost({ type: 'pin' });
+}
+
+function revealApp() {
+  state.appHidden = false;
+  document.querySelector('.app').classList.remove('hidden');
 }
 
 document.addEventListener('keydown', (e) => {
