@@ -179,8 +179,10 @@ body.ingame {
   background: linear-gradient(180deg, rgba(240,180,41,.1), transparent);
   border-bottom: 1px solid var(--line);
 }
+.app-head { cursor: grab; user-select: none; touch-action: none; }
+.app-head.dragging { cursor: grabbing; }
 .app-head .who { margin-left: auto; text-align: right; font-size: .85rem; }
-.app-head .hide-btn { flex: 0 0 auto; align-self: flex-start; }
+.app-head .hide-btn { flex: 0 0 auto; align-self: flex-start; cursor: pointer; }
 
 /* The reopen handle. Sits top-left, out of the way of the money HUD (top-right)
    and minimap (bottom-left), and only appears while the app is hidden. */

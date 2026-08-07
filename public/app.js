@@ -126,6 +126,75 @@ function revealApp() {
 $('hideBtn').addEventListener('click', hideApp);
 $('reopen').addEventListener('click', revealApp);
 
+/**
+ * Drag the panel around by its header. The position is pinned as `fixed` on the
+ * first grab, clamped so the header can never leave the screen, and remembered
+ * so it stays put across a hide/show and across reloads.
+ */
+(function makeDraggable() {
+  const app = document.querySelector('.app');
+  const handle = document.querySelector('.app-head');
+  const KEY = 'tt_loans_pos';
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let baseLeft = 0;
+  let baseTop = 0;
+
+  function place(left, top) {
+    const maxLeft = window.innerWidth - app.offsetWidth - 6;
+    const maxTop = window.innerHeight - app.offsetHeight - 6;
+    app.style.position = 'fixed';
+    app.style.margin = '0';
+    app.style.left = `${Math.max(6, Math.min(left, Math.max(6, maxLeft)))}px`;
+    app.style.top = `${Math.max(6, Math.min(top, Math.max(6, maxTop)))}px`;
+  }
+
+  handle.addEventListener('pointerdown', (e) => {
+    // Don't start a drag from the Hide button or any other control.
+    if (e.target.closest('button, input, a, select, textarea')) return;
+    dragging = true;
+    handle.classList.add('dragging');
+    const rect = app.getBoundingClientRect();
+    baseLeft = rect.left;
+    baseTop = rect.top;
+    startX = e.clientX;
+    startY = e.clientY;
+    place(baseLeft, baseTop); // pin where it currently sits, no jump
+    handle.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    place(baseLeft + (e.clientX - startX), baseTop + (e.clientY - startY));
+  });
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    const rect = app.getBoundingClientRect();
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ left: rect.left, top: rect.top }));
+    } catch {
+      /* storage disabled - position just won't persist */
+    }
+  }
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+
+  // Restore a saved position on load.
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+      requestAnimationFrame(() => place(saved.left, saved.top));
+    }
+  } catch {
+    /* ignore malformed value */
+  }
+})();
+
 /* ------------------------------------------------------------------ sign in */
 
 async function signIn() {
